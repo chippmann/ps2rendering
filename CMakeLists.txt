@@ -7,7 +7,7 @@ project(rendertest)
 
 
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp TextureLoader.cpp TextureLoader.h)
 target_link_libraries(${PROJECT_NAME} -ldebug -lkernel -ldraw -lcdvd -lgraph -lmath3d -lpacket -ldma -lpacket2 -lpad -laudsrv -lc -lstdc++ -lpng -lz -lfreetype)
 
 add_custom_command(

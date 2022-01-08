@@ -109,9 +109,6 @@ void init_drawing_env() {
 
 void clear_screen(color_t p_clear_color) {
     packet2_t* packet2 = packet2_create(36, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
-    if (!packet2) {
-        printf("OUT_OF_MEM!\n");
-    }
     packet2_chain_open_end(packet2, 0, 0);
     packet2_update(packet2, draw_disable_tests(packet2->next, 0, &z_buffer));
     packet2_update(packet2, draw_clear(packet2->next, 0,
@@ -178,7 +175,7 @@ void load_texture_into_vram_if_necessary(Texture* texture) {
     }
 }
 
-void draw_texture(u16 p_pos_x, u16 p_pos_y, Texture* texture) {
+void draw_texture(packet2_t* chain_packet, u16 p_pos_x, u16 p_pos_y, Texture* texture) {
     float texture_rect_s;
     float texture_rect_t;
     float texture_rect_max = texture_rect_t = texture_rect_s = fmax(texture->width, texture->height);
@@ -217,22 +214,19 @@ void draw_texture(u16 p_pos_x, u16 p_pos_y, Texture* texture) {
             }
     };
 
-    begin_frame_if_needed();
-    load_texture_into_vram_if_necessary(texture);
-
-    packet2_t* packet2 = packet2_create(12, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
-    packet2_update(packet2, draw_primitive_xyoffset(packet2->next, 0, SCREEN_CENTER, SCREEN_CENTER));
-    packet2_utils_gif_add_set(packet2, 1);
-    packet2_utils_gs_add_texbuff_clut(packet2, texture->vram_texture_buffer, &texture->clut_buffer);
+//    packet2_t* chain_packet = packet2_create(12, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
+    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER, SCREEN_CENTER));
+    packet2_utils_gif_add_set(chain_packet, 1);
+    packet2_utils_gs_add_texbuff_clut(chain_packet, texture->vram_texture_buffer, &texture->clut_buffer);
     draw_enable_blending();
-    packet2_update(packet2, draw_rect_textured(packet2->next, 0, &texture_rect));
-    packet2_update(packet2, draw_primitive_xyoffset(packet2->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
+    packet2_update(chain_packet, draw_rect_textured(chain_packet->next, 0, &texture_rect));
+    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
                                                     SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
     draw_disable_blending();
-    packet2_update(packet2, draw_finish(packet2->next));
-    dma_channel_wait(DMA_CHANNEL_GIF, 0);
-    dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
-    packet2_free(packet2);
+//    packet2_update(chain_packet, draw_finish(chain_packet->next));
+//    dma_channel_wait(DMA_CHANNEL_GIF, 0);
+//    dma_channel_send_packet2(chain_packet, DMA_CHANNEL_GIF, true);
+//    packet2_free(chain_packet);
 }
 
 void end_frame() {
@@ -263,9 +257,17 @@ float random(float p_from, float p_to) {
     return randf() * (p_to - p_from) + p_from;
 }
 
+packet2_t* start_chain(int texture_count) {
+    // 1 = 10
+    // 2 = pre and after
+    packet2_t* packet2 = packet2_create((texture_count * 10) + 6, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
+    packet2_chain_open_end(packet2, 0, 0);
+    return packet2;
+}
+
 int main() {
     printf("Starting render testing\n");
-    int texture_count = 1000;
+    int texture_count = 1500;
     float texture_positions[texture_count][2];
     float texture_directions[texture_count][2];
 
@@ -289,6 +291,9 @@ int main() {
 
     while (1) {
         timer_prime();
+        begin_frame_if_needed();
+        load_texture_into_vram_if_necessary(texture);
+        packet2_t* chain_packet = start_chain(texture_count);
 
         for (int i = 0; i < texture_count; ++i) {
             float x = texture_positions[i][0];
@@ -313,8 +318,15 @@ int main() {
             texture_positions[i][0] = x + (texture_directions[i][0] * speed * delta_time);
             texture_positions[i][1] = y + (texture_directions[i][1] * speed * delta_time);
 
-            draw_texture(texture_positions[i][0], texture_positions[i][1], texture);
+            draw_texture(chain_packet, texture_positions[i][0], texture_positions[i][1], texture);
         }
+
+        packet2_update(chain_packet, draw_finish(chain_packet->next));
+        packet2_chain_close_tag(chain_packet);
+        dma_channel_wait(DMA_CHANNEL_GIF, 0);
+        dma_channel_send_packet2(chain_packet, DMA_CHANNEL_GIF, true);
+        dma_channel_wait(DMA_CHANNEL_GIF, 0);
+        packet2_free(chain_packet);
 
         end_frame();
     }

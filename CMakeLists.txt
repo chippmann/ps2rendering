@@ -9,3 +9,14 @@ project(rendertest)
 
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} -ldebug -lkernel -ldraw -lcdvd -lgraph -lmath3d -lpacket -ldma -lpacket2 -lpad -laudsrv -lc -lstdc++ -lpng -lz -lfreetype)
+
+add_custom_command(
+        TARGET ${PROJECT_NAME}
+        PRE_BUILD
+        COMMAND ${CMAKE_COMMAND}
+        -DSRC_FOLDER=${CMAKE_CURRENT_SOURCE_DIR}/assets
+        -DTARGET_FOLDER=${CMAKE_CURRENT_BINARY_DIR}
+        -P ${CMAKE_SOURCE_DIR}/copy_assets.cmake
+        COMMENT "Copying assets..."
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

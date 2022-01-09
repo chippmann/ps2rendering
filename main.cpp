@@ -102,8 +102,9 @@ void allocate_buffers() {
 void init_drawing_env() {
     packet2_t* packet2 = packet2_create(20, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
     packet2_update(packet2, draw_setup_environment(packet2->base, 0, frame_buffers, &(z_buffer)));
-    packet2_update(packet2, draw_primitive_xyoffset(packet2->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
-                                                    SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
+//    packet2_update(packet2, draw_primitive_xyoffset(packet2->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
+//                                                    SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
+//    packet2_update(packet2, draw_primitive_xyoffset(packet2->next, 0, SCREEN_CENTER, SCREEN_CENTER));
     packet2_update(packet2, draw_finish(packet2->next));
     dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
     dma_channel_wait(DMA_CHANNEL_GIF, 0);
@@ -272,8 +273,8 @@ float random(float p_from, float p_to) {
 
 packet2_t* start_chain(int texture_count) {
     // 1 texture = 8 qw
-    // 3 = pre and after
-    packet2_t* packet2 = packet2_create((texture_count * 8) + 3, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
+    // +11 = chain qw
+    packet2_t* packet2 = packet2_create((texture_count * 8) + 1, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
 //    packet2_chain_open_end(packet2, 0, 0);
     packet2_chain_open_cnt(packet2, false, 0, false);
     return packet2;
@@ -316,7 +317,6 @@ int main() {
         begin_frame_if_needed();
         load_texture_into_vram_if_necessary(texture);
         packet2_t* chain_packet = start_chain(current_texture_count);
-        packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER, SCREEN_CENTER));
 
         for (int i = 0; i < current_texture_count; ++i) {
             float x = texture_positions[i][0];

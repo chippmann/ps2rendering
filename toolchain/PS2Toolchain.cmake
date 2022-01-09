@@ -3,6 +3,7 @@
 # based on the toolchain from Mathias Lafeldt <misfire@debugon.org>
 
 set(PS2DEV "$ENV{PS2DEV}")
+set(PS2SDK "${PS2DEV}/ps2sdk")
 
 if (NOT PS2DEV)
     MESSAGE(FATAL_ERROR "PS2DEV env var not set.")
@@ -14,17 +15,20 @@ set(CMAKE_SYSTEM_PROCESSOR ee)
 
 set(CMAKE_C_COMPILER ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-gcc)
 set(CMAKE_CXX_COMPILER ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-g++)
-#SET(CMAKE_C_LINK_EXECUTABLE ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-ld)
-#SET(CMAKE_CXX_LINK_EXECUTABLE ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-ld)
+SET(CMAKE_C_LINK_EXECUTABLE ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-ld)
+SET(CMAKE_CXX_LINK_EXECUTABLE ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-ld)
 
 set(EE_STRIP ${PS2DEV}/ee/bin/mips64r5900el-ps2-elf-strip)
+
+if(NOT EE_LINKFILE)
+    set(EE_LINKFILE ${PS2SDK}/ee/startup/linkfile)
+endif()
 
 set(CMAKE_FIND_ROOT_PATH "${PS2DEV}/ee")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
-set(PS2SDK "${PS2DEV}/ps2sdk")
 include_directories("${PS2SDK}/ee/include")
 include_directories("${PS2SDK}/common/include")
 include_directories("${PS2SDK}/ports/include")
@@ -71,10 +75,10 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES_C ".a")
 set(CMAKE_FIND_LIBRARY_SUFFIXES_CXX ".a")
 
 set(CMAKE_C_LINK_EXECUTABLE
-        "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> -L${PS2SDK}/ee/lib -L${PS2SDK}/ports/lib <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+        "<CMAKE_C_COMPILER> <FLAGS> <CMAKE_C_LINK_FLAGS> -T${EE_LINKFILE} -L${PS2SDK}/ee/lib <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 set(CMAKE_CXX_LINK_EXECUTABLE
-        "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> -L${PS2SDK}/ee/lib -L${PS2SDK}/ports/lib <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
+        "<CMAKE_CXX_COMPILER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> -T${EE_LINKFILE} -L${PS2SDK}/ee/lib -L${PS2SDK}/ports/lib <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
         )
 
 # build EE_LIB

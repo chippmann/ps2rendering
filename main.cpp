@@ -1,6 +1,8 @@
 
 #include <cstdio>
+#include <tamtypes.h>
 #include <debug.h>
+#include <unistd.h>
 #include <dma.h>
 #include <draw_buffers.h>
 #include <gs_psm.h>
@@ -12,6 +14,7 @@
 #include <packet2_chain.h>
 #include <timer.h>
 #include <packet2_utils.h>
+#include <sifrpc.h>
 
 #include "TextureLoader.h"
 
@@ -62,7 +65,7 @@ void timer_prime() {
     }
     delta_time = tmp_delta / 1000.0f;
     last_time = *T3_COUNT;
-    printf("FPS: %f | Deltatime: %f\n", fps, delta_time);
+//    printf("FPS: %f | Deltatime: %f\n", fps, delta_time);
 }
 
 void allocate_buffers() {
@@ -215,13 +218,12 @@ void draw_texture(packet2_t* chain_packet, u16 p_pos_x, u16 p_pos_y, Texture* te
     };
 
 //    packet2_t* chain_packet = packet2_create(12, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
-    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER, SCREEN_CENTER));
     packet2_utils_gif_add_set(chain_packet, 1);
     packet2_utils_gs_add_texbuff_clut(chain_packet, texture->vram_texture_buffer, &texture->clut_buffer);
     draw_enable_blending();
     packet2_update(chain_packet, draw_rect_textured(chain_packet->next, 0, &texture_rect));
-    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
-                                                    SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
+//    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
+//                                                    SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
     draw_disable_blending();
 //    packet2_update(chain_packet, draw_finish(chain_packet->next));
 //    dma_channel_wait(DMA_CHANNEL_GIF, 0);
@@ -260,16 +262,21 @@ float random(float p_from, float p_to) {
 packet2_t* start_chain(int texture_count) {
     // 1 = 10
     // 2 = pre and after
-    packet2_t* packet2 = packet2_create((texture_count * 10) + 6, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
-    packet2_chain_open_end(packet2, 0, 0);
+    packet2_t* packet2 = packet2_create((texture_count * 8) + 3, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
+//    packet2_chain_open_end(packet2, 0, 0);
+    packet2_chain_open_cnt(packet2, false, 0, false);
     return packet2;
 }
 
 int main() {
-    printf("Starting render testing\n");
-    int texture_count = 1500;
-    float texture_positions[texture_count][2];
-    float texture_directions[texture_count][2];
+//    printf("Starting render testing\n");
+    SifInitRpc(0);
+    init_scr();
+
+    int max_texture_count = 4000;
+    int current_texture_count = 500;
+    float texture_positions[max_texture_count][2];
+    float texture_directions[max_texture_count][2];
 
     dma_channel_initialize(DMA_CHANNEL_GIF, nullptr, 0);
     dma_channel_fast_waits(DMA_CHANNEL_GIF);
@@ -282,20 +289,23 @@ int main() {
     int positional_screen_size_x = SCREEN_WIDTH - texture->width;
     int positional_screen_size_y = SCREEN_HEIGHT - texture->height;
     float speed = 10;
-    for (int i = 0; i < texture_count; ++i) {
+    for (int i = 0; i < max_texture_count; ++i) {
         texture_positions[i][0] = rand() % positional_screen_size_x;
         texture_positions[i][1] = rand() % positional_screen_size_y;
         texture_directions[i][0] = random(-1.0f, 1.0f);
         texture_directions[i][1] = random(-1.0f, 1.0f);
     }
 
-    while (1) {
+    bool benchmark_running = true;
+    int stable_around60_count = 0;
+    while (benchmark_running) {
         timer_prime();
         begin_frame_if_needed();
         load_texture_into_vram_if_necessary(texture);
-        packet2_t* chain_packet = start_chain(texture_count);
+        packet2_t* chain_packet = start_chain(current_texture_count);
+        packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER, SCREEN_CENTER));
 
-        for (int i = 0; i < texture_count; ++i) {
+        for (int i = 0; i < current_texture_count; ++i) {
             float x = texture_positions[i][0];
             float y = texture_positions[i][1];
 
@@ -321,13 +331,53 @@ int main() {
             draw_texture(chain_packet, texture_positions[i][0], texture_positions[i][1], texture);
         }
 
-        packet2_update(chain_packet, draw_finish(chain_packet->next));
+//        packet2_update(chain_packet, draw_finish(chain_packet->next));
         packet2_chain_close_tag(chain_packet);
-        dma_channel_wait(DMA_CHANNEL_GIF, 0);
+//        packet2_print_qw_count(chain_packet);
+//        while (true){}
+//        dma_channel_wait(DMA_CHANNEL_GIF, 0);
+        dma_wait_fast();
         dma_channel_send_packet2(chain_packet, DMA_CHANNEL_GIF, true);
-        dma_channel_wait(DMA_CHANNEL_GIF, 0);
+        dma_wait_fast();
+//        dma_channel_wait(DMA_CHANNEL_GIF, 0);
         packet2_free(chain_packet);
 
         end_frame();
+
+        if (fps <= 65 && fps >= 55) {
+            stable_around60_count++;
+        } else {
+            stable_around60_count = 0;
+        }
+
+        if (stable_around60_count >= 10*60 || (fps >= 60 && current_texture_count >= max_texture_count)) {
+            benchmark_running = false;
+        }
+
+        if (fps > 60) {
+            current_texture_count += fps - 60;
+            if (current_texture_count > max_texture_count) {
+                current_texture_count = max_texture_count;
+            }
+        } else if (fps < 60) {
+            current_texture_count -= 60 - fps;
+        }
+    }
+
+    begin_frame_if_needed();
+    clear_screen({.r = 0x0, .g = 0x0, .b = 0x0, .a = 0x80});
+    end_frame();
+
+    scr_clear();
+    if (current_texture_count >= max_texture_count) {
+        printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
+        scr_printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
+    } else {
+        printf("Benchmark done.\n\nReached stable 60FPS with %d sprites.\n", current_texture_count);
+        scr_printf("Benchmark done.\n\nReached stable 60FPS with %d sprites.\n", current_texture_count);
+    }
+
+    while (1){
+
     }
 }

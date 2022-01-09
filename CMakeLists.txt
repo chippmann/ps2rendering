@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 set(CMAKE_CXX_STANDARD 20)
 
-set(CMAKE_TOOLCHAIN_FILE /home/cedric/projects/01_private/untitled8/toolchain/PS2Toolchain.cmake)
+set(CMAKE_TOOLCHAIN_FILE /home/cedric/projects/01_private/ps2rendering/toolchain/PS2Toolchain.cmake)
 
 project(rendertest)
 

@@ -292,6 +292,7 @@ int main() {
 
     int max_texture_count = 10000;
     int current_texture_count = 500;
+    float target_fps = 60.0f;
     float texture_positions[max_texture_count][2];
     float texture_directions[max_texture_count][2];
 
@@ -360,23 +361,23 @@ int main() {
 
         end_frame();
 
-        if (fps <= 65 && fps >= 55) {
+        if (fps <= target_fps + 5 && fps >= target_fps - 5) {
             stable_around60_count++;
         } else {
             stable_around60_count = 0;
         }
 
-        if (stable_around60_count >= 10*60 || (fps >= 60 && current_texture_count >= max_texture_count)) {
+        if (stable_around60_count >= 10*target_fps || (fps >= target_fps && current_texture_count >= max_texture_count)) {
             benchmark_running = false;
         }
 
-        if (fps > 60) {
-            current_texture_count += fps - 60;
+        if (fps > target_fps) {
+            current_texture_count += fps - target_fps;
             if (current_texture_count > max_texture_count) {
                 current_texture_count = max_texture_count;
             }
-        } else if (fps < 60) {
-            current_texture_count -= 60 - fps;
+        } else if (fps < target_fps) {
+            current_texture_count -= target_fps - fps;
         }
     }
 
@@ -389,8 +390,8 @@ int main() {
         printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
         scr_printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
     } else {
-        printf("Benchmark done.\n\nReached stable 60FPS with %d sprites.\n", current_texture_count);
-        scr_printf("Benchmark done.\n\nReached stable 60FPS with %d sprites.\n", current_texture_count);
+        printf("Benchmark done.\n\nReached stable %dFPS with %d sprites.\n", static_cast<int>(target_fps), current_texture_count);
+        scr_printf("Benchmark done.\n\nReached stable %dFPS with %d sprites.\n", static_cast<int>(target_fps), current_texture_count);
     }
 
     while (1){

@@ -275,7 +275,9 @@ packet2_t* start_chain(int texture_count) {
 }
 
 int main() {
-//    printf("Starting render testing\n");
+    // 5188 PCSX2 on framework laptop
+    // 1944 on real PS2
+    printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();
 

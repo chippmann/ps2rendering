@@ -113,7 +113,8 @@ void init_drawing_env() {
 
 float x_clear = 2048.0F - (SCREEN_WIDTH / 2.0f);
 float y_clear = 2048.0F - (SCREEN_HEIGHT / 2.0f);
-void clear_screen(color_t p_clear_color) {
+color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
+void clear_screen(const color_t& p_clear_color) {
     packet2_t* packet2 = packet2_create(36, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
     packet2_chain_open_end(packet2, 0, 0);
     packet2_update(packet2, draw_disable_tests(packet2->next, 0, &z_buffer));
@@ -133,7 +134,7 @@ void clear_screen(color_t p_clear_color) {
 void begin_frame_if_needed() {
     if (frame_draw_state.is_frame_empty) {
         frame_draw_state.is_frame_empty = false;
-        clear_screen({.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80});
+        clear_screen(clear_color);
     }
 }
 

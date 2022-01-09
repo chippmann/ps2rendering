@@ -9,8 +9,8 @@
 
 struct Texture {
     u8 format{GS_PSM_32};
-    u16 width;
-    u16 height;
+    float width;
+    float height;
     const unsigned char* data;
     texwrap_t wrap_settings {
             .horizontal = WRAP_REPEAT,

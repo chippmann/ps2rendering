@@ -178,35 +178,41 @@ void load_texture_into_vram_if_necessary(Texture* texture) {
     }
 }
 
-void draw_texture(packet2_t* chain_packet, u16 p_pos_x, u16 p_pos_y, Texture* texture) {
-    float texture_rect_s;
-    float texture_rect_t;
-    float texture_rect_max = texture_rect_t = texture_rect_s = fmax(texture->width, texture->height);
-
-    if (texture->width > texture->height) {
-        texture_rect_t = texture_rect_max / (static_cast<float>(texture->width) / static_cast<float>(texture->height));
-    } else if (texture->height > texture->width) {
-        texture_rect_s = texture_rect_max / (static_cast<float>(texture->height) / static_cast<float>(texture->width));
-    }
+void draw_texture(packet2_t* chain_packet, float p_pos_x, float p_pos_y, Texture* texture) {
+//    float texture_rect_s;
+//    float texture_rect_t;
+//    float max;
+//    if (texture->width > texture->height) {
+//        max = texture->width;
+//    } else {
+//        max = texture->height;
+//    }
+//    float texture_rect_max = texture_rect_t = texture_rect_s = max;//fmax(texture->width, texture->height);
+//
+//    if (texture->width > texture->height) {
+//        texture_rect_t = texture_rect_max / (static_cast<float>(texture->width) / static_cast<float>(texture->height));
+//    } else if (texture->height > texture->width) {
+//        texture_rect_s = texture_rect_max / (static_cast<float>(texture->height) / static_cast<float>(texture->width));
+//    }
 
     texrect_t texture_rect{
             .v0 = {
-                    .x = static_cast<float>(p_pos_x),
-                    .y = static_cast<float>(p_pos_y),
-                    .z = static_cast<u32>(-1)
+                    .x = p_pos_x,
+                    .y = p_pos_y,
+                    .z = 0
             },
             .t0  = {
                     .s = 0,
                     .t = 0
             },
             .v1 = {
-                    .x = static_cast<float>(p_pos_x) + static_cast<float>(texture->width),
-                    .y = static_cast<float>(p_pos_y) + static_cast<float>(texture->height),
-                    .z = static_cast<u32>(-1)
+                    .x = p_pos_x + texture->width,
+                    .y = p_pos_y + texture->height,
+                    .z = 0
             },
             .t1  = {
-                    .s = texture_rect_s,
-                    .t = texture_rect_t
+                    .s = texture->width,
+                    .t = texture->height
             },
             .color = {
                     .r = 0x80,
@@ -260,8 +266,8 @@ float random(float p_from, float p_to) {
 }
 
 packet2_t* start_chain(int texture_count) {
-    // 1 = 10
-    // 2 = pre and after
+    // 1 texture = 8 qw
+    // 3 = pre and after
     packet2_t* packet2 = packet2_create((texture_count * 8) + 3, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
 //    packet2_chain_open_end(packet2, 0, 0);
     packet2_chain_open_cnt(packet2, false, 0, false);
@@ -273,7 +279,7 @@ int main() {
     SifInitRpc(0);
     init_scr();
 
-    int max_texture_count = 4000;
+    int max_texture_count = 10000;
     int current_texture_count = 500;
     float texture_positions[max_texture_count][2];
     float texture_directions[max_texture_count][2];

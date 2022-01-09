@@ -89,5 +89,7 @@ Texture* TextureLoader::load_texture(const char* p_path) {
     texture->width = width;
     texture->height = height;
     texture->data = texture_data;
+    texture->texture_rect.t1.s = width;
+    texture->texture_rect.t1.t = height;
     return texture;
 }

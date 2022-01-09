@@ -6,12 +6,40 @@
 #include <gs_psm.h>
 #include <draw_sampling.h>
 #include <draw_buffers.h>
+#include <draw2d.h>
 
 struct Texture {
     u8 format{GS_PSM_32};
     float width;
     float height;
     const unsigned char* data;
+    texrect_t texture_rect{
+            .v0 = {
+//                    .x = p_pos_x,
+//                    .y = p_pos_y,
+//                    .z = 0
+            },
+            .t0  = {
+                    .s = 0,
+                    .t = 0
+            },
+            .v1 = {
+//                    .x = p_pos_x + texture->width,
+//                    .y = p_pos_y + texture->height,
+//                    .z = 0
+            },
+            .t1  = {
+//                    .s = texture->width,
+//                    .t = texture->height
+            },
+            .color = {
+                    .r = 0x80,
+                    .g = 0x80,
+                    .b = 0x80,
+                    .a = 0x80,
+                    .q = 1.0f
+            }
+    };
     texwrap_t wrap_settings {
             .horizontal = WRAP_REPEAT,
             .vertical = WRAP_REPEAT,

@@ -195,39 +195,44 @@ void draw_texture(packet2_t* chain_packet, float p_pos_x, float p_pos_y, Texture
 //        texture_rect_s = texture_rect_max / (static_cast<float>(texture->height) / static_cast<float>(texture->width));
 //    }
 
-    texrect_t texture_rect{
-            .v0 = {
-                    .x = p_pos_x,
-                    .y = p_pos_y,
-                    .z = 0
-            },
-            .t0  = {
-                    .s = 0,
-                    .t = 0
-            },
-            .v1 = {
-                    .x = p_pos_x + texture->width,
-                    .y = p_pos_y + texture->height,
-                    .z = 0
-            },
-            .t1  = {
-                    .s = texture->width,
-                    .t = texture->height
-            },
-            .color = {
-                    .r = 0x80,
-                    .g = 0x80,
-                    .b = 0x80,
-                    .a = 0x80,
-                    .q = 1.0f
-            }
-    };
+    texture->texture_rect.v0.x = p_pos_x;
+    texture->texture_rect.v0.y = p_pos_y;
+    texture->texture_rect.v1.x = p_pos_x + texture->width;
+    texture->texture_rect.v1.y = p_pos_y + texture->height;
+
+//    texrect_t texture_rect{
+//            .v0 = {
+//                    .x = p_pos_x,
+//                    .y = p_pos_y,
+//                    .z = 0
+//            },
+//            .t0  = {
+//                    .s = 0,
+//                    .t = 0
+//            },
+//            .v1 = {
+//                    .x = p_pos_x + texture->width,
+//                    .y = p_pos_y + texture->height,
+//                    .z = 0
+//            },
+//            .t1  = {
+//                    .s = texture->width,
+//                    .t = texture->height
+//            },
+//            .color = {
+//                    .r = 0x80,
+//                    .g = 0x80,
+//                    .b = 0x80,
+//                    .a = 0x80,
+//                    .q = 1.0f
+//            }
+//    };
 
 //    packet2_t* chain_packet = packet2_create(12, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
     packet2_utils_gif_add_set(chain_packet, 1);
     packet2_utils_gs_add_texbuff_clut(chain_packet, texture->vram_texture_buffer, &texture->clut_buffer);
     draw_enable_blending();
-    packet2_update(chain_packet, draw_rect_textured(chain_packet->next, 0, &texture_rect));
+    packet2_update(chain_packet, draw_rect_textured(chain_packet->next, 0, &texture->texture_rect));
 //    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
 //                                                    SCREEN_CENTER - (SCREEN_HEIGHT / 2.0F)));
     draw_disable_blending();
@@ -275,7 +280,7 @@ packet2_t* start_chain(int texture_count) {
 }
 
 int main() {
-    // 5188 PCSX2 on framework laptop
+    // 5349 PCSX2 on framework laptop
     // 1944 on real PS2
     printf("Starting render testing\n");
     SifInitRpc(0);

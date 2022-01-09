@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="reset PS2" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="rendertest" TARGET_NAME="rendertest" CONFIG_NAME="Debug" RUN_PATH="../resetPS2.sh">
+    <method v="2" />
+  </configuration>
+</component>

@@ -111,12 +111,14 @@ void init_drawing_env() {
     packet2_free(packet2);
 }
 
+float x_clear = 2048.0F - (SCREEN_WIDTH / 2.0f);
+float y_clear = 2048.0F - (SCREEN_HEIGHT / 2.0f);
 void clear_screen(color_t p_clear_color) {
     packet2_t* packet2 = packet2_create(36, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
     packet2_chain_open_end(packet2, 0, 0);
     packet2_update(packet2, draw_disable_tests(packet2->next, 0, &z_buffer));
     packet2_update(packet2, draw_clear(packet2->next, 0,
-                                       2048.0F - (SCREEN_WIDTH / 2.0f), 2048.0F - (SCREEN_HEIGHT / 2.0f),
+                                       x_clear, y_clear,
                                        SCREEN_WIDTH, SCREEN_HEIGHT,
                                        p_clear_color.r, p_clear_color.g, p_clear_color.b));
     packet2_update(packet2, draw_enable_tests(packet2->next, 0, &z_buffer));

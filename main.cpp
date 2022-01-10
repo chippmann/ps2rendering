@@ -15,6 +15,7 @@
 #include <timer.h>
 #include <packet2_utils.h>
 #include <sifrpc.h>
+#include <kernel.h>
 
 #include "TextureLoader.h"
 
@@ -406,8 +407,8 @@ int main() {
     }
 
     begin_frame_if_needed();
-    clear_screen({.r = 0x0, .g = 0x0, .b = 0x0, .a = 0x80});
     end_frame();
+    dma_wait_fast();
 
     scr_clear();
     if (current_texture_count >= max_texture_count) {
@@ -418,7 +419,5 @@ int main() {
         scr_printf("Benchmark done.\n\nReached stable %dFPS with %d sprites.\n", static_cast<int>(target_fps), current_texture_count);
     }
 
-    while (1){
-
-    }
+    SleepThread();
 }

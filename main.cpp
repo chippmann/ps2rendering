@@ -66,7 +66,7 @@ void timer_prime() {
     }
     delta_time = tmp_delta / 1000.0f;
     last_time = *T3_COUNT;
-//    printf("FPS: %f | Deltatime: %f\n", fps, delta_time);
+    printf("FPS: %f | Deltatime: %f\n", fps, delta_time);
 }
 
 void allocate_buffers() {
@@ -393,13 +393,13 @@ int main() {
 
         end_frame();
 
-        if (fps <= target_fps + 5 && fps >= target_fps - 5) {
+        if (fps <= target_fps + 2 && fps >= target_fps - 2) {
             stable_around60_count++;
         } else {
             stable_around60_count = 0;
         }
 
-        if (stable_around60_count >= 50*target_fps || (fps >= target_fps && current_texture_count >= max_texture_count)) {
+        if (stable_around60_count >= 5*target_fps || (fps >= target_fps && current_texture_count >= max_texture_count)) {
             benchmark_running = false;
         }
 

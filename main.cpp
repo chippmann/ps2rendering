@@ -132,7 +132,13 @@ void clear_screen(const color_t& p_clear_color) {
     packet2_free(packet2);
 }
 
-#define MAX_CHAIN_QW_SIZE 250 // 4 KBytes -> 1QW == 128bit
+// 500 -> 2370
+// 250 -> 2512
+// 125 -> 2760
+// 62 -> 2818
+// 45 -> 2819
+// 64 -> 2819
+#define MAX_CHAIN_QW_SIZE 64 // 4 KBytes -> 1QW == 128bit
 void start_chain() {
     if (!frame_draw_state.active_chain) {
         // 1 texture = 8 qw
@@ -267,9 +273,7 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
 //    };
 
 //    packet2_t* chain_packet = packet2_create(12, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
-    check_chain_size(10);
-    packet2_utils_gif_add_set(frame_draw_state.active_chain, 1);
-    packet2_utils_gs_add_texbuff_clut(frame_draw_state.active_chain, texture->vram_texture_buffer, &texture->clut_buffer);
+    check_chain_size(4);
     draw_enable_blending();
     packet2_update(frame_draw_state.active_chain, draw_rect_textured(frame_draw_state.active_chain->next, 0, &texture->texture_rect));
 //    packet2_update(chain_packet, draw_primitive_xyoffset(chain_packet->next, 0, SCREEN_CENTER - (SCREEN_WIDTH / 2.0F),
@@ -312,7 +316,7 @@ float random(float p_from, float p_to) {
 int main() {
     // 5349 PCSX2 on framework laptop with full vram allocation (minus framebuffer size)
     // 4521 PCSX2 on framework laptop with chain size limit set to 4KByte
-    // 2042 on real PS2
+    // 2819 on real PS2 -> max QW 64 (higher chain size limit gives lower perf)
     printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();
@@ -347,6 +351,8 @@ int main() {
     while (benchmark_running) {
         timer_prime();
         begin_frame_if_needed();
+        packet2_utils_gif_add_set(frame_draw_state.active_chain, 1);
+        packet2_utils_gs_add_texbuff_clut(frame_draw_state.active_chain, texture->vram_texture_buffer, &texture->clut_buffer);
 
         for (int i = 0; i < current_texture_count; ++i) {
             float x = texture_positions[i][0];
@@ -392,7 +398,7 @@ int main() {
             stable_around60_count = 0;
         }
 
-        if (stable_around60_count >= 10*target_fps || (fps >= target_fps && current_texture_count >= max_texture_count)) {
+        if (stable_around60_count >= 50*target_fps || (fps >= target_fps && current_texture_count >= max_texture_count)) {
             benchmark_running = false;
         }
 

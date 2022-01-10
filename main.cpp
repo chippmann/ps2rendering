@@ -116,20 +116,20 @@ float x_clear = 2048.0F - (SCREEN_WIDTH / 2.0f);
 float y_clear = 2048.0F - (SCREEN_HEIGHT / 2.0f);
 color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
 void clear_screen(const color_t& p_clear_color) {
-    packet2_t* packet2 = packet2_create(36, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
-    packet2_chain_open_end(packet2, 0, 0);
-    packet2_update(packet2, draw_disable_tests(packet2->next, 0, &z_buffer));
-    packet2_update(packet2, draw_clear(packet2->next, 0,
-                                       x_clear, y_clear,
-                                       SCREEN_WIDTH, SCREEN_HEIGHT,
-                                       p_clear_color.r, p_clear_color.g, p_clear_color.b));
-    packet2_update(packet2, draw_enable_tests(packet2->next, 0, &z_buffer));
-    packet2_update(packet2, draw_finish(packet2->next));
-    packet2_chain_close_tag(packet2);
-    dma_channel_wait(DMA_CHANNEL_GIF, 0);
-    dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
-    dma_channel_wait(DMA_CHANNEL_GIF, 0);
-    packet2_free(packet2);
+//    packet2_t* chain_packet = packet2_create(36, P2_TYPE_NORMAL, P2_MODE_CHAIN, false);
+//    packet2_chain_open_end(frame_draw_state.active_chain, 0, 0);
+    packet2_update(frame_draw_state.active_chain, draw_disable_tests(frame_draw_state.active_chain->next, 0, &z_buffer));
+    packet2_update(frame_draw_state.active_chain, draw_clear(frame_draw_state.active_chain->next, 0,
+                                            x_clear, y_clear,
+                                            SCREEN_WIDTH, SCREEN_HEIGHT,
+                                            p_clear_color.r, p_clear_color.g, p_clear_color.b));
+    packet2_update(frame_draw_state.active_chain, draw_enable_tests(frame_draw_state.active_chain->next, 0, &z_buffer));
+    packet2_update(frame_draw_state.active_chain, draw_finish(frame_draw_state.active_chain->next));
+//    packet2_chain_close_tag(frame_draw_state.active_chain);
+//    dma_channel_wait(DMA_CHANNEL_GIF, 0);
+//    dma_channel_send_packet2(frame_draw_state.active_chain, DMA_CHANNEL_GIF, true);
+//    dma_channel_wait(DMA_CHANNEL_GIF, 0);
+//    packet2_free(frame_draw_state.active_chain);
 }
 
 // 500 -> 2370
@@ -173,8 +173,8 @@ void check_chain_size(int p_qw_to_add) {
 
 void begin_frame_if_needed() {
     if (!frame_draw_state.active_chain) {
-        clear_screen(clear_color);
         start_chain();
+        clear_screen(clear_color);
     }
 }
 
@@ -316,7 +316,8 @@ float random(float p_from, float p_to) {
 int main() {
     // 5349 PCSX2 on framework laptop with full vram allocation (minus framebuffer size)
     // 4521 PCSX2 on framework laptop with chain size limit set to 4KByte
-    // 2819 on real PS2 -> max QW 64 (higher chain size limit gives lower perf)
+    // 6581 PCSX2 on workstation
+    // 2823 on real PS2 -> max QW 64 (higher chain size limit gives lower perf)
     printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();

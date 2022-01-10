@@ -312,7 +312,7 @@ float random(float p_from, float p_to) {
 int main() {
     // 5349 PCSX2 on framework laptop with full vram allocation (minus framebuffer size)
     // 4521 PCSX2 on framework laptop with chain size limit set to 4KByte
-    // 1944 on real PS2
+    // 2042 on real PS2
     printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();

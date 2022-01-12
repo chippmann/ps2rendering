@@ -370,6 +370,7 @@ int main() {
 
     dma_wait_fast();
     dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
+    flip_buffers(frame_draw_state.flipPacket, &frame_draw_state.frame_buffers[frame_draw_state.active_buffer_index]);
 
     sleep(1);
 

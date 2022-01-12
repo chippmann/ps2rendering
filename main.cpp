@@ -106,7 +106,7 @@ void allocate_buffers() {
             0
     );
 
-    frame_draw_state.flipPacket = packet2_create(3, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
+    frame_draw_state.flipPacket = packet2_create(4, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
     frame_draw_state.packets[0] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
     frame_draw_state.packets[1] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
 }

@@ -31,7 +31,7 @@
 // 62 -> 2818
 // 45 -> 2819
 // 64 -> 2819
-#define MAX_CHAIN_QW_SIZE 128
+#define MAX_CHAIN_QW_SIZE 64
 
 float delta_time{};
 float fps{};
@@ -115,7 +115,7 @@ void init_drawing_env(framebuffer_t* p_framebuffer, zbuffer_t* p_z_buffer) {
     packet2_t* packet2 = packet2_create(2, P2_TYPE_NORMAL, P2_MODE_NORMAL, 0);
     packet2_update(packet2, draw_setup_environment(packet2->base, 0, p_framebuffer, p_z_buffer));
     packet2_update(packet2, draw_finish(packet2->next));
-    dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
+    dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, false);
     dma_wait_fast();
     packet2_free(packet2);
 }
@@ -124,7 +124,7 @@ void flip_buffers(packet2_t* p_flip_packet, framebuffer_t* p_framebuffer) {
     packet2_update(p_flip_packet, draw_framebuffer(p_flip_packet->base, 0, p_framebuffer));
     packet2_update(p_flip_packet, draw_finish(p_flip_packet->next));
     dma_wait_fast();
-    dma_channel_send_packet2(p_flip_packet, DMA_CHANNEL_GIF, true);
+    dma_channel_send_packet2(p_flip_packet, DMA_CHANNEL_GIF, false);
     draw_wait_finish();
 }
 
@@ -132,7 +132,20 @@ void flip_buffers(packet2_t* p_flip_packet, framebuffer_t* p_framebuffer) {
 #define SCREEN_CLEAR_Y (SCREEN_CENTER - (SCREEN_HEIGHT / 2.0f))
 static color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
 
+void check_chain_size(packet2_t* packet, int p_qw_to_add) {
+    assert(p_qw_to_add < MAX_CHAIN_QW_SIZE);
+    if (packet2_get_qw_count(packet) + p_qw_to_add > MAX_CHAIN_QW_SIZE) {
+        dma_wait_fast();
+        dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, false);
+        dma_wait_fast();
+        frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
+        packet2_free(frame_draw_state.active_packet);
+        frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
+    }
+}
+
 void clear_screen(packet2_t* p_packet, zbuffer_t* p_z_buffer) {
+    check_chain_size(frame_draw_state.active_packet, 10);
     packet2_chain_open_cnt(p_packet, false, 0, false);
     packet2_update(p_packet, draw_disable_tests(p_packet->next, 0, p_z_buffer));
     packet2_update(
@@ -151,17 +164,6 @@ void clear_screen(packet2_t* p_packet, zbuffer_t* p_z_buffer) {
     );
     packet2_update(p_packet, draw_enable_tests(p_packet->next, 0, p_z_buffer));
     packet2_chain_close_tag(p_packet);
-}
-
-void check_chain_size(packet2_t* packet, int p_qw_to_add) {
-    assert(p_qw_to_add < MAX_CHAIN_QW_SIZE);
-    if (packet2_get_qw_count(packet) + p_qw_to_add > MAX_CHAIN_QW_SIZE) {
-//        printf("SENDING...\n");
-        dma_wait_fast();
-        dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, true);
-        dma_wait_fast();
-        packet2_reset(packet, true); //TODO: maybe set to true even if slow?
-    }
 }
 
 void allocate_and_assign_texture_buffer(Texture* texture) {
@@ -214,7 +216,7 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
     texture->texture_rect.v1.x = p_pos_x + texture->width;
     texture->texture_rect.v1.y = p_pos_y + texture->height;
 
-    check_chain_size(frame_draw_state.active_packet, 4);
+    check_chain_size(frame_draw_state.active_packet, 5);
     packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
     draw_enable_blending();
     packet2_update(frame_draw_state.active_packet,draw_rect_textured(frame_draw_state.active_packet->next, 0, &texture->texture_rect));
@@ -223,20 +225,22 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
 }
 
 void end_frame() {
-    check_chain_size(frame_draw_state.active_packet, 2);
+    check_chain_size(frame_draw_state.active_packet, 3);
     packet2_chain_open_end(frame_draw_state.active_packet, false, 0);
     packet2_update(frame_draw_state.active_packet, draw_finish(frame_draw_state.active_packet->next));
     packet2_chain_close_tag(frame_draw_state.active_packet);
 
     dma_wait_fast();
-    dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, true);
+    dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
 
     // disabled for benchmarking
 //    graph_wait_vsync();
 
     draw_wait_finish();
 
-    packet2_reset(frame_draw_state.active_packet, true);
+    frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
+    packet2_free(frame_draw_state.active_packet);
+
     graph_set_framebuffer_filtered(
             frame_draw_state.frame_buffers[frame_draw_state.active_buffer_index].address,
             frame_draw_state.frame_buffers[frame_draw_state.active_buffer_index].width,
@@ -268,6 +272,7 @@ int main() {
     // 6581 PCSX2 on workstation
     // 2823 on real PS2 -> max QW 64 (higher chain size limit gives lower perf)
     // 2366
+    // 2805
     printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();
@@ -356,9 +361,17 @@ int main() {
         }
     }
 
-    packet2_t* final_screen_clear_packet = packet2_create(20, Packet2Type::P2_TYPE_UNCACHED_ACCL, Packet2Mode::P2_MODE_NORMAL, 0);
-    clear_screen(final_screen_clear_packet, &frame_draw_state.z_buffer);
-    end_frame();
+    frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
+    clear_screen(frame_draw_state.active_packet, &frame_draw_state.z_buffer);
+    check_chain_size(frame_draw_state.active_packet, 10);
+    packet2_chain_open_end(frame_draw_state.active_packet, false, 0);
+    packet2_update(frame_draw_state.active_packet, draw_finish(frame_draw_state.active_packet->next));
+    packet2_chain_close_tag(frame_draw_state.active_packet);
+
+    dma_wait_fast();
+    dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
+
+    sleep(1);
 
     scr_clear();
     if (current_texture_count >= max_texture_count) {

@@ -31,7 +31,7 @@
 // 62 -> 2818
 // 45 -> 2819
 // 64 -> 2819
-#define MAX_CHAIN_QW_SIZE 64
+#define MAX_CHAIN_QW_SIZE 1024
 
 float delta_time{};
 float fps{};
@@ -139,7 +139,11 @@ void check_chain_size(packet2_t* packet, int p_qw_to_add) {
         dma_wait_fast();
         dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, false);
         dma_wait_fast();
-        frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
+        frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(
+                MAX_CHAIN_QW_SIZE,
+                P2_TYPE_UNCACHED_ACCL,
+                P2_MODE_CHAIN, 0
+        );
         packet2_free(frame_draw_state.active_packet);
         frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
     }
@@ -169,8 +173,12 @@ void clear_screen(packet2_t* p_packet, zbuffer_t* p_z_buffer) {
 
 void allocate_and_assign_texture_buffer(Texture* texture) {
     texbuffer_t* vram_texture_buffer = new texbuffer_t{};
-    vram_texture_buffer->address = graph_vram_allocate(texture->width, texture->height, texture->format,
-                                                       GRAPH_ALIGN_BLOCK);
+    vram_texture_buffer->address = graph_vram_allocate(
+            texture->width,
+            texture->height,
+            texture->format,
+            GRAPH_ALIGN_BLOCK
+    );
     vram_texture_buffer->width = texture->width;
     vram_texture_buffer->psm = texture->format;
     vram_texture_buffer->info = {
@@ -220,7 +228,10 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
     check_chain_size(frame_draw_state.active_packet, 5);
     packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
     draw_enable_blending();
-    packet2_update(frame_draw_state.active_packet,draw_rect_textured(frame_draw_state.active_packet->next, 0, &texture->texture_rect));
+    packet2_update(
+            frame_draw_state.active_packet,
+            draw_rect_textured(frame_draw_state.active_packet->next, 0, &texture->texture_rect)
+    );
     draw_disable_blending();
     packet2_chain_close_tag(frame_draw_state.active_packet);
 }
@@ -232,7 +243,11 @@ void end_frame() {
     // disabled for benchmarking
 //    graph_wait_vsync();
 
-    frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
+    frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(
+            MAX_CHAIN_QW_SIZE,
+            P2_TYPE_UNCACHED_ACCL,
+            P2_MODE_CHAIN, 0
+    );
     packet2_free(frame_draw_state.active_packet);
 
     graph_set_framebuffer_filtered(
@@ -304,8 +319,11 @@ int main() {
 
         packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
         packet2_utils_gif_add_set(frame_draw_state.active_packet, 1);
-        packet2_utils_gs_add_texbuff_clut(frame_draw_state.active_packet, texture->vram_texture_buffer,
-                                          &texture->clut_buffer);
+        packet2_utils_gs_add_texbuff_clut(
+                frame_draw_state.active_packet,
+                texture->vram_texture_buffer,
+                &texture->clut_buffer
+        );
         packet2_chain_close_tag(frame_draw_state.active_packet);
 
         for (int i = 0; i < current_texture_count; ++i) {
@@ -370,10 +388,16 @@ int main() {
         printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
         scr_printf("Benchmark aborted.\n\nReason: Reached max texture count.\nTry increasing max_texture_count\n");
     } else {
-        printf("Benchmark done.\n\nReached stable %dFPS with %d sprites.\n", static_cast<int>(target_fps),
-               current_texture_count);
-        scr_printf("Benchmark done.\n\nReached stable %dFPS with %d sprites.\n", static_cast<int>(target_fps),
-                   current_texture_count);
+        printf(
+                "Benchmark done.\n\nReached stable %dFPS with %d sprites.\n",
+                static_cast<int>(target_fps),
+                current_texture_count
+        );
+        scr_printf(
+                "Benchmark done.\n\nReached stable %dFPS with %d sprites.\n",
+                static_cast<int>(target_fps),
+                current_texture_count
+        );
     }
 
     SleepThread();

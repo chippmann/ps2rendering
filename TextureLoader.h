@@ -10,29 +10,18 @@
 
 struct Texture {
     u8 format{GS_PSM_32};
-    float width;
-    float height;
-    const unsigned char* data;
+    float width{0};
+    float height{0};
+    const unsigned char* data{nullptr};
     texrect_t texture_rect{
-            .v0 = {
-//                    .x = p_pos_x,
-//                    .y = p_pos_y,
-//                    .z = 0
-            },
-            .t0  = {
+            .v0{},
+            .t0{
                     .s = 0,
                     .t = 0
             },
-            .v1 = {
-//                    .x = p_pos_x + texture->width,
-//                    .y = p_pos_y + texture->height,
-//                    .z = 0
-            },
-            .t1  = {
-//                    .s = texture->width,
-//                    .t = texture->height
-            },
-            .color = {
+            .v1{},
+            .t1{},
+            .color{
                     .r = 0x80,
                     .g = 0x80,
                     .b = 0x80,

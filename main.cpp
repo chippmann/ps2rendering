@@ -226,18 +226,11 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
 }
 
 void end_frame() {
-    check_chain_size(frame_draw_state.active_packet, 3);
-    packet2_chain_open_end(frame_draw_state.active_packet, false, 0);
-    packet2_update(frame_draw_state.active_packet, draw_finish(frame_draw_state.active_packet->next));
-    packet2_chain_close_tag(frame_draw_state.active_packet);
-
     dma_wait_fast();
     dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
 
     // disabled for benchmarking
 //    graph_wait_vsync();
-
-    draw_wait_finish();
 
     frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(MAX_CHAIN_QW_SIZE, P2_TYPE_UNCACHED_ACCL, P2_MODE_CHAIN, 0);
     packet2_free(frame_draw_state.active_packet);
@@ -268,7 +261,7 @@ float random(float p_from, float p_to) {
 }
 
 int main() {
-    // 5634 PCSX2 on workstation with MAX_CHAIN_QW_SIZE 1024
+    // 5637 PCSX2 on workstation with MAX_CHAIN_QW_SIZE 1024
     // 4208 PCSX2 on workstation with MAX_CHAIN_QW_SIZE 64
     // 2823 on real PS2 -> MAX_CHAIN_QW_SIZE 64 (higher chain size limit gives lower perf)
     printf("Starting render testing\n");

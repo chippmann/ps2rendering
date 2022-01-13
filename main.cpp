@@ -278,6 +278,7 @@ void end_frame() {
     flip_buffers(frame_draw_state.flipPacket, &frame_draw_state.frame_buffers[frame_draw_state.active_buffer_index]);
     frame_count++;
     if (frame_count >= 3) {
+        // Stop after above defined frames passed to examine the packet dumps
         SleepThread();
     }
 }
@@ -303,7 +304,7 @@ int main() {
     init_scr();
 
     int max_texture_count = 10000;
-    int current_texture_count = 10;
+    int current_texture_count = 500;
     float target_fps = 60.0f;
     float texture_positions[max_texture_count][2];
     float texture_directions[max_texture_count][2];
@@ -334,6 +335,10 @@ int main() {
 
         frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
 
+        printf("\n\n==================================================\n");
+        printf("Start new frame No. %d. Active framebuffer index: %d\n", frame_count + 1, frame_draw_state.active_buffer_index);
+        printf("==================================================\n");
+
         clear_screen(frame_draw_state.active_packet, &frame_draw_state.z_buffer);
 
         packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
@@ -345,7 +350,7 @@ int main() {
         );
         packet2_chain_close_tag(frame_draw_state.active_packet);
 
-        for (int i = 0; i < 6; ++i) {
+        for (int i = 0; i < 10; ++i) {
             float x = texture_positions[i][0];
             float y = texture_positions[i][1];
 

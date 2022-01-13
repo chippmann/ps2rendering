@@ -135,6 +135,7 @@ static color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
 void check_chain_size(packet2_t* packet, int p_qw_to_add) {
     assert(p_qw_to_add < MAX_CHAIN_QW_SIZE);
     if (packet2_get_qw_count(packet) + p_qw_to_add > MAX_CHAIN_QW_SIZE) {
+//        printf("SENDING...\n");
         dma_wait_fast();
         dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, false);
         dma_wait_fast();
@@ -267,12 +268,9 @@ float random(float p_from, float p_to) {
 }
 
 int main() {
-    // 5349 PCSX2 on framework laptop with full vram allocation (minus framebuffer size)
-    // 4521 PCSX2 on framework laptop with chain size limit set to 4KByte
-    // 6581 PCSX2 on workstation
-    // 2823 on real PS2 -> max QW 64 (higher chain size limit gives lower perf)
-    // 2366
-    // 2805
+    // 5634 PCSX2 on workstation with MAX_CHAIN_QW_SIZE 1024
+    // 4208 PCSX2 on workstation with MAX_CHAIN_QW_SIZE 64
+    // 2823 on real PS2 -> MAX_CHAIN_QW_SIZE 64 (higher chain size limit gives lower perf)
     printf("Starting render testing\n");
     SifInitRpc(0);
     init_scr();

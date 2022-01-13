@@ -31,7 +31,7 @@
 // 62 -> 2818
 // 45 -> 2819
 // 64 -> 2819
-#define MAX_CHAIN_QW_SIZE 1024
+#define MAX_CHAIN_QW_SIZE 64
 
 float delta_time{};
 float fps{};

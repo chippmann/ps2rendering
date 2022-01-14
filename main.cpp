@@ -33,6 +33,8 @@
 // 64 -> 2819
 #define MAX_CHAIN_QW_SIZE 64
 
+#define DUMP_DMA_CHAIN
+
 float delta_time{};
 float fps{};
 
@@ -116,8 +118,10 @@ void init_drawing_env(framebuffer_t* p_framebuffer, zbuffer_t* p_z_buffer) {
     packet2_update(packet2, draw_setup_environment(packet2->base, 0, p_framebuffer, p_z_buffer));
     packet2_update(packet2, draw_finish(packet2->next));
 
+#ifdef DUMP_DMA_CHAIN
     printf("\n\nSend init draw environment packet: \n");
     packet2_print(packet2, 0);
+#endif
     dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, false);
     dma_wait_fast();
     packet2_free(packet2);
@@ -128,24 +132,38 @@ void flip_buffers(packet2_t* p_flip_packet, framebuffer_t* p_framebuffer) {
     packet2_update(p_flip_packet, draw_finish(p_flip_packet->next));
     dma_wait_fast();
 
+#ifdef DUMP_DMA_CHAIN
     printf("\n\nSend flip buffer packet: \n");
     packet2_print(p_flip_packet, 0);
+#endif
     dma_channel_send_packet2(p_flip_packet, DMA_CHANNEL_GIF, false);
     draw_wait_finish();
 }
 
-#define SCREEN_CLEAR_X (SCREEN_CENTER - (SCREEN_WIDTH / 2.0f))
-#define SCREEN_CLEAR_Y (SCREEN_CENTER - (SCREEN_HEIGHT / 2.0f))
-static color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
+void open_chain(packet2_t* p_packet) {
+    if (packet2_is_dma_tag_opened(p_packet)) {
+        packet2_chain_close_tag(p_packet);
+    }
+    packet2_chain_open_cnt(p_packet, false, 0, false);
+}
+
+void end_chain(packet2_t* p_packet) {
+    if (packet2_is_dma_tag_opened(p_packet)) {
+        packet2_chain_close_tag(p_packet);
+    }
+}
 
 void check_chain_size(packet2_t* packet, int p_qw_to_add) {
     assert(p_qw_to_add < MAX_CHAIN_QW_SIZE);
     if (packet2_get_qw_count(packet) + p_qw_to_add > MAX_CHAIN_QW_SIZE) {
 //        printf("SENDING...\n");
+        end_chain(packet);
         dma_wait_fast();
 
+#ifdef DUMP_DMA_CHAIN
         printf("\n\nSend intermediate active packet (as MAX_CHAIN_QW_SIZE reached): \n");
         packet2_print(packet, 0);
+#endif
         dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, false);
         dma_wait_fast();
         frame_draw_state.packets[frame_draw_state.active_buffer_index] = packet2_create(
@@ -155,12 +173,15 @@ void check_chain_size(packet2_t* packet, int p_qw_to_add) {
         );
         packet2_free(frame_draw_state.active_packet);
         frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
+        open_chain(frame_draw_state.active_packet);
     }
 }
 
+#define SCREEN_CLEAR_X (SCREEN_CENTER - (SCREEN_WIDTH / 2.0f))
+#define SCREEN_CLEAR_Y (SCREEN_CENTER - (SCREEN_HEIGHT / 2.0f))
+static color_t clear_color{.r = 0x2b, .g = 0x2b, .b = 0x2b, .a = 0x80};
 void clear_screen(packet2_t* p_packet, zbuffer_t* p_z_buffer) {
     check_chain_size(frame_draw_state.active_packet, 10);
-    packet2_chain_open_cnt(p_packet, false, 0, false);
     packet2_update(p_packet, draw_disable_tests(p_packet->next, 0, p_z_buffer));
     packet2_update(
             p_packet,
@@ -177,7 +198,6 @@ void clear_screen(packet2_t* p_packet, zbuffer_t* p_z_buffer) {
             )
     );
     packet2_update(p_packet, draw_enable_tests(p_packet->next, 0, p_z_buffer));
-    packet2_chain_close_tag(p_packet);
 }
 
 void allocate_and_assign_texture_buffer(Texture* texture) {
@@ -223,8 +243,10 @@ void load_texture_into_vram_if_necessary(Texture* texture) {
         packet2_update(packet2, draw_texture_flush(packet2->next));
         dma_channel_wait(DMA_CHANNEL_GIF, 0);
 
+#ifdef DUMP_DMA_CHAIN
         printf("\n\nSend upload texture packet: \n");
         packet2_print(packet2, 0);
+#endif
         dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
         dma_channel_wait(DMA_CHANNEL_GIF, 0);
         packet2_free(packet2);
@@ -238,21 +260,37 @@ void draw_texture(float p_pos_x, float p_pos_y, Texture* texture) {
     texture->texture_rect.v1.y = p_pos_y + texture->height;
 
     check_chain_size(frame_draw_state.active_packet, 5);
-    packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
     draw_enable_blending();
     packet2_update(
             frame_draw_state.active_packet,
             draw_rect_textured(frame_draw_state.active_packet->next, 0, &texture->texture_rect)
     );
     draw_disable_blending();
-    packet2_chain_close_tag(frame_draw_state.active_packet);
 }
 
+#ifdef DUMP_DMA_CHAIN
 int frame_count = 0;
+#endif
+
+void start_frame() {
+    frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
+    open_chain(frame_draw_state.active_packet);
+
+#ifdef DUMP_DMA_CHAIN
+    printf("\n\n==================================================\n");
+    printf("Start new frame No. %d. Active framebuffer index: %d\n", frame_count + 1, frame_draw_state.active_buffer_index);
+    printf("==================================================\n");
+#endif
+    clear_screen(frame_draw_state.active_packet, &frame_draw_state.z_buffer);
+}
+
 void end_frame() {
+    end_chain(frame_draw_state.active_packet);
     dma_wait_fast();
+#ifdef DUMP_DMA_CHAIN
     printf("\n\nSend active packet at end of frame: \n");
     packet2_print(frame_draw_state.active_packet, 0);
+#endif
     dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
 
     // disabled for benchmarking
@@ -276,11 +314,14 @@ void end_frame() {
     frame_draw_state.active_buffer_index ^= 1;
 
     flip_buffers(frame_draw_state.flipPacket, &frame_draw_state.frame_buffers[frame_draw_state.active_buffer_index]);
+
+#ifdef DUMP_DMA_CHAIN
     frame_count++;
     if (frame_count >= 3) {
         // Stop after above defined frames passed to examine the packet dumps
         SleepThread();
     }
+#endif
 }
 
 float randf() {
@@ -304,7 +345,11 @@ int main() {
     init_scr();
 
     int max_texture_count = 10000;
+#ifdef DUMP_DMA_CHAIN
+    int current_texture_count = 10;
+#else
     int current_texture_count = 500;
+#endif
     float target_fps = 60.0f;
     float texture_positions[max_texture_count][2];
     float texture_directions[max_texture_count][2];
@@ -333,24 +378,16 @@ int main() {
     while (benchmark_running) {
         timer_prime();
 
-        frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];
+        start_frame();
 
-        printf("\n\n==================================================\n");
-        printf("Start new frame No. %d. Active framebuffer index: %d\n", frame_count + 1, frame_draw_state.active_buffer_index);
-        printf("==================================================\n");
-
-        clear_screen(frame_draw_state.active_packet, &frame_draw_state.z_buffer);
-
-        packet2_chain_open_cnt(frame_draw_state.active_packet, false, 0, false);
         packet2_utils_gif_add_set(frame_draw_state.active_packet, 1);
         packet2_utils_gs_add_texbuff_clut(
                 frame_draw_state.active_packet,
                 texture->vram_texture_buffer,
                 &texture->clut_buffer
         );
-        packet2_chain_close_tag(frame_draw_state.active_packet);
 
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < current_texture_count; ++i) {
             float x = texture_positions[i][0];
             float y = texture_positions[i][1];
 
@@ -373,6 +410,7 @@ int main() {
 
         end_frame();
 
+#ifndef DUMP_DMA_CHAIN
         if (fps <= target_fps + 2 && fps >= target_fps - 2) {
             stable_around60_count++;
         } else {
@@ -392,6 +430,7 @@ int main() {
         } else if (fps < target_fps) {
             current_texture_count -= target_fps - fps;
         }
+#endif
     }
 
     frame_draw_state.active_packet = frame_draw_state.packets[frame_draw_state.active_buffer_index];

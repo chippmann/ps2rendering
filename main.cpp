@@ -33,7 +33,7 @@
 // 64 -> 2819
 #define MAX_CHAIN_QW_SIZE 64
 
-#define DUMP_DMA_CHAIN
+//#define DUMP_DMA_CHAIN
 
 float delta_time{};
 float fps{};
@@ -69,6 +69,55 @@ void timer_prime() {
     delta_time = tmp_delta / 1000.0f;
     last_time = *T3_COUNT;
 //    printf("FPS: %f | Deltatime: %f\n", fps, delta_time);
+}
+
+/// Dumps the content of p_packet to the console, swapping the upper with the lower word for each dword in a qword
+void dump_packet(packet2_t *p_packet) {
+    u32 qw_count = ((u32)p_packet->next - (u32)p_packet->base) >> 4;
+    printf("\n============================\n");
+    printf("Packet2: Dumping %d words...\n", ((u32)p_packet->next - (u32)p_packet->base) >> 2);
+    u32 i = 0;
+    u32 *nextWord;
+
+    int word_counter;
+    u32* word_1;
+    u32* word_2;
+    u32* word_3;
+    u32* word_4;
+    for (nextWord = (u32 *)p_packet->base; nextWord != (u32 *)p_packet->next; nextWord++, i++) {
+        if ((i % 4) == 0) {
+            if (word_counter >= 4) {
+                word_counter = 0;
+                printf("%08x %08x %08x %08x\n", *word_1, *word_2, *word_3, *word_4);
+            }
+            printf("%08x:  ", (u32) nextWord);
+        }
+        word_counter++;
+        switch (word_counter) {
+            case 1:
+                word_2 = nextWord;
+                break;
+            case 2:
+                word_1 = nextWord;
+                break;
+            case 3:
+                word_4 = nextWord;
+                break;
+            case 4:
+                word_3 = nextWord;
+                break;
+            default:
+                printf("ERROR: word_counter > 4\n");
+                return;
+        }
+        if (i / 4 == qw_count) {
+            break;
+        }
+    }
+    if (word_1 && word_2 && word_3 && word_4) {
+        printf("%08x %08x %08x %08x\n", *word_1, *word_2, *word_3, *word_4);
+    }
+    printf("\n============================\n");
 }
 
 void allocate_buffers() {
@@ -120,7 +169,7 @@ void init_drawing_env(framebuffer_t* p_framebuffer, zbuffer_t* p_z_buffer) {
 
 #ifdef DUMP_DMA_CHAIN
     printf("\n\nSend init draw environment packet: \n");
-    packet2_print(packet2, 0);
+    dump_packet(packet2);
 #endif
     dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, false);
     dma_wait_fast();
@@ -134,7 +183,7 @@ void flip_buffers(packet2_t* p_flip_packet, framebuffer_t* p_framebuffer) {
 
 #ifdef DUMP_DMA_CHAIN
     printf("\n\nSend flip buffer packet: \n");
-    packet2_print(p_flip_packet, 0);
+    dump_packet(p_flip_packet);
 #endif
     dma_channel_send_packet2(p_flip_packet, DMA_CHANNEL_GIF, false);
     draw_wait_finish();
@@ -162,7 +211,7 @@ void check_chain_size(packet2_t* packet, int p_qw_to_add) {
 
 #ifdef DUMP_DMA_CHAIN
         printf("\n\nSend intermediate active packet (as MAX_CHAIN_QW_SIZE reached): \n");
-        packet2_print(packet, 0);
+        dump_packet(packet);
 #endif
         dma_channel_send_packet2(packet, DMA_CHANNEL_GIF, false);
         dma_wait_fast();
@@ -245,7 +294,7 @@ void load_texture_into_vram_if_necessary(Texture* texture) {
 
 #ifdef DUMP_DMA_CHAIN
         printf("\n\nSend upload texture packet: \n");
-        packet2_print(packet2, 0);
+        dump_packet(packet2);
 #endif
         dma_channel_send_packet2(packet2, DMA_CHANNEL_GIF, true);
         dma_channel_wait(DMA_CHANNEL_GIF, 0);
@@ -289,7 +338,7 @@ void end_frame() {
     dma_wait_fast();
 #ifdef DUMP_DMA_CHAIN
     printf("\n\nSend active packet at end of frame: \n");
-    packet2_print(frame_draw_state.active_packet, 0);
+    dump_packet(frame_draw_state.active_packet);
 #endif
     dma_channel_send_packet2(frame_draw_state.active_packet, DMA_CHANNEL_GIF, false);
 
@@ -317,7 +366,7 @@ void end_frame() {
 
 #ifdef DUMP_DMA_CHAIN
     frame_count++;
-    if (frame_count >= 3) {
+    if (frame_count >= 1) {
         // Stop after above defined frames passed to examine the packet dumps
         SleepThread();
     }
@@ -346,7 +395,7 @@ int main() {
 
     int max_texture_count = 10000;
 #ifdef DUMP_DMA_CHAIN
-    int current_texture_count = 10;
+    int current_texture_count = 2000;
 #else
     int current_texture_count = 500;
 #endif
